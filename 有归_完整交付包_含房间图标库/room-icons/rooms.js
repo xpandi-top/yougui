@@ -1,0 +1,122 @@
+export const ROOM_ICONS = {
+  "rooms-living": {
+    "name": "客厅",
+    "group": "日常起居",
+    "body": "<path d=\"M6 10V6h12v4M4 10h2v5h12v-5h2v10H4V10ZM6 20v2M18 20v2M12 7v8M2 3h3M3.5 3v4\"/>"
+  },
+  "rooms-dining": {
+    "name": "餐厅",
+    "group": "日常起居",
+    "body": "<path d=\"M5 11h14M7 11v10M17 11v10M2 8v9h3M22 8v9h-3M2 17v4M22 17v4M9 7h6\"/><circle cx=\"12\" cy=\"5\" r=\"2\"/>"
+  },
+  "rooms-kitchen": {
+    "name": "厨房",
+    "group": "厨卫家务",
+    "body": "<rect x=\"2\" y=\"10\" width=\"20\" height=\"11\" rx=\"1\"/><path d=\"M2 15h20M12 15v6M6 18h2M16 18h2M5 10V6a2 2 0 0 1 4 0M13 7h7M15 7V4h3v3M14 10h5\"/>"
+  },
+  "rooms-bedroom": {
+    "name": "卧室",
+    "group": "睡眠休憩",
+    "body": "<path d=\"M3 21V6h18v15M3 17h18M3 13h18M7 9h3v4H7V9ZM14 9h3v4h-3V9Z\"/>"
+  },
+  "rooms-child": {
+    "name": "儿童房",
+    "group": "睡眠休憩",
+    "body": "<path d=\"M3 7v14M21 11v10M3 18h18M3 11h14a4 4 0 0 1 4 4v3M6 8h5v3H6V8Z\"/><path d=\"m16 2 .8 2.2 2.2.8-2.2.8L16 8l-.8-2.2L13 5l2.2-.8L16 2Z\"/>"
+  },
+  "rooms-guest": {
+    "name": "客房",
+    "group": "睡眠休憩",
+    "body": "<path d=\"M2 12v9M15 14v7M2 18h13M2 12h9a4 4 0 0 1 4 4M4 9h4v3H4V9Z\"/><rect x=\"17\" y=\"8\" width=\"5\" height=\"11\" rx=\"1\"/><path d=\"M18 8V5h3v3M19 11v5\"/>"
+  },
+  "rooms-study": {
+    "name": "书房",
+    "group": "阅读工作",
+    "body": "<path d=\"M3 14h18M5 14v8M19 14v8M5 4h5v7H5V4ZM10 3h4v8h-4V3ZM15 5l3-1 2 7-3 1-2-7ZM9 18h6\"/>"
+  },
+  "rooms-office": {
+    "name": "工作室",
+    "group": "阅读工作",
+    "body": "<rect x=\"5\" y=\"3\" width=\"14\" height=\"9\" rx=\"1\"/><path d=\"M12 12v3M9 15h6M2 17h20M4 17v5M20 17v5M8 6h8\"/>"
+  },
+  "rooms-bathroom": {
+    "name": "浴室",
+    "group": "厨卫家务",
+    "body": "<path d=\"M3 12h18v3a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v-3ZM6 20v2M18 20v2M5 12V5a3 3 0 0 1 6 0M9 6h4M9 9v1M12 9v1\"/>"
+  },
+  "rooms-powder": {
+    "name": "卫生间",
+    "group": "厨卫家务",
+    "body": "<rect x=\"4\" y=\"3\" width=\"8\" height=\"7\" rx=\"1\"/><path d=\"M4 10v5a5 5 0 0 0 5 5h9v2H8M12 11h9v4H4M17 15v5M7 6h2\"/>"
+  },
+  "rooms-laundry": {
+    "name": "洗衣房",
+    "group": "厨卫家务",
+    "body": "<rect x=\"3\" y=\"3\" width=\"15\" height=\"19\" rx=\"1\"/><path d=\"M3 8h15M6 5.5h3M14 5.5h.5M21 3v13M20 6h2\"/><circle cx=\"10.5\" cy=\"15\" r=\"4\"/><path d=\"M7 15c2-2 5 2 7 0\"/>"
+  },
+  "rooms-closet": {
+    "name": "衣帽间",
+    "group": "收纳储藏",
+    "body": "<rect x=\"3\" y=\"2\" width=\"18\" height=\"20\" rx=\"1\"/><path d=\"M12 2v20M6 10h3M15 10h3M6 5h3M15 5h3M7 14v3M17 14v3\"/>"
+  },
+  "rooms-entry": {
+    "name": "玄关",
+    "group": "通行过渡",
+    "body": "<path d=\"M4 22V3h12v19M4 22h17M12 12h.5M18 4h4M20 4v7M18 7h4M17 18h5v4h-5v-4\"/>"
+  },
+  "rooms-hallway": {
+    "name": "走廊",
+    "group": "通行过渡",
+    "body": "<path d=\"M2 3h20v19H2V3ZM2 3l6 5h8l6-5M8 8v9l-6 5M16 8v9l6 5M8 17h8M11 21l1-4 1 4\"/>"
+  },
+  "rooms-balcony": {
+    "name": "阳台",
+    "group": "户外延伸",
+    "body": "<path d=\"M2 12h20M2 21h20M4 12v9M8 12v9M12 12v9M16 12v9M20 12v9M5 7h6l-1 5H6L5 7ZM8 7V3m0 3 3-2M17 3v3M15 4l4 1\"/>"
+  },
+  "rooms-terrace": {
+    "name": "露台",
+    "group": "户外延伸",
+    "body": "<path d=\"m3 9 8-7 8 7H3ZM11 9v11M8 20h6M18 11v6h4M18 17v4M22 17v4M2 21h20\"/>"
+  },
+  "rooms-garden": {
+    "name": "花园",
+    "group": "户外延伸",
+    "body": "<path d=\"M2 22h20M5 22v-8M3 16h4M3 19h4M17 22V9M17 14c-8 0-8-10 0-10s8 10 0 10ZM10 22v-7m-2 3 2 2 2-2\"/>"
+  },
+  "rooms-garage": {
+    "name": "车库",
+    "group": "收纳储藏",
+    "body": "<path d=\"M2 22V7l10-5 10 5v15M5 7h14M5 10h14M5 13h14M6 18l1-3h10l1 3v4H6v-4ZM6 18h12M8 21v1M16 21v1\"/>"
+  },
+  "rooms-storage": {
+    "name": "储藏室",
+    "group": "收纳储藏",
+    "body": "<path d=\"M3 2v20M21 2v20M3 11h18M3 21h18\"/><rect x=\"6\" y=\"4\" width=\"5\" height=\"7\" rx=\"0\"/><rect x=\"14\" y=\"5\" width=\"4\" height=\"6\" rx=\"0\"/><rect x=\"6\" y=\"15\" width=\"7\" height=\"6\" rx=\"0\"/><rect x=\"16\" y=\"14\" width=\"3\" height=\"7\" rx=\"0\"/><path d=\"M8 7h1M8 18h3\"/>"
+  },
+  "rooms-pantry": {
+    "name": "食品储藏室",
+    "group": "收纳储藏",
+    "body": "<path d=\"M3 2v20M21 2v20M3 11h18M3 21h18M6 11V6h4v5M7 6V3h2v3M14 4h4v7h-4V4ZM6 15h5v6H6v-6M15 21v-7h3v7M7 17h3\"/>"
+  },
+  "rooms-basement": {
+    "name": "地下室",
+    "group": "收纳储藏",
+    "body": "<path d=\"M2 3h20M3 7h5v4h4v4h4v4h5M3 7v15h18V7M18 5v7m-3-3 3 3 3-3\"/>"
+  },
+  "rooms-attic": {
+    "name": "阁楼",
+    "group": "收纳储藏",
+    "body": "<path d=\"m2 12 10-9 10 9M5 10v12h14V10M5 16h14M10 22v-4h4v4\"/><rect x=\"10\" y=\"9\" width=\"4\" height=\"4\" rx=\"0\"/>"
+  },
+  "rooms-gym": {
+    "name": "健身房",
+    "group": "休闲兴趣",
+    "body": "<path d=\"M2 22h20M7 12h10M3 9h4v6H3V9ZM17 9h4v6h-4V9ZM1 11v2M23 11v2M9 5h6M12 3v4\"/>"
+  },
+  "rooms-workshop": {
+    "name": "工具房",
+    "group": "休闲兴趣",
+    "body": "<path d=\"M2 14h20M4 14v8M20 14v8M7 18h10M5 3h6v4H5V3ZM8 7v5M15 3l4 4-2 2-4-4 2-2ZM16 8l-3 4\"/>"
+  }
+};

@@ -1,0 +1,18 @@
+// core/ 边界检查：只允许 ES2022，无 DOM、无 node 类型、无 vite/client。
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": [],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "noUnusedLocals": true
+  },
+  "include": ["src/core"]
+}
