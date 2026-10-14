@@ -32,8 +32,10 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         // 发现新版本先提示（UpdateBanner），用户点「更新」才切换，避免编辑中途自动刷新
         registerType: 'prompt',
+        // manifest 图标已被 globPatterns 覆盖，避免重复条目
+        includeManifestIcons: false,
         injectRegister: false,
-        includeAssets: ['favicon.ico', 'favicon.svg', 'favicon-16.png', 'favicon-32.png', 'apple-touch-icon.png', 'app-icon.svg'],
+        // public/ 下的图标由下方 globPatterns 统一预缓存（不再用 includeAssets，避免重复条目）
         manifest: {
           name: '有归 · 家庭收纳',
           short_name: '有归',
@@ -53,7 +55,8 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+          // manifest.webmanifest 由插件自动加入预缓存，这里不重复匹配
+          globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
           navigateFallback: 'index.html',
           cleanupOutdatedCaches: true,
           maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
