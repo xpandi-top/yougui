@@ -9,6 +9,7 @@ import { formatBytes } from '../../lib/files.ts'
 import { appUrl, updateSettings, useSettings, type LangPref, type ThemePref } from '../../lib/settings.ts'
 import { setSyncConfig } from '../../lib/sync.ts'
 import { TextDialog } from '../dialogs/Basic.tsx'
+import { UpdateControls } from '../ui/UpdateControls.tsx'
 import { Card, Page, PageHeader, Section } from '../ui/Layout.tsx'
 
 export default function SettingsPage() {
@@ -82,6 +83,11 @@ export default function SettingsPage() {
             />
           </Card>
         </Section>
+        <Section title={t('update.section')}>
+          <Card sx={{ p: 2 }}>
+            <UpdateControls full />
+          </Card>
+        </Section>
         <Section title={t('settings.storage')}>
           <Card sx={{ p: 2 }}>
             <Typography variant="body2">
@@ -111,11 +117,6 @@ export default function SettingsPage() {
             {t('settings.wipeHelp')}
           </Alert>
         </Section>
-        <Box sx={{ textAlign: 'center' }}>
-          <Typography variant="caption" color="text.secondary">
-            v{__APP_VERSION__} · {__BUILD_ID__}
-          </Typography>
-        </Box>
       </Page>
       <TextDialog
         open={renaming}

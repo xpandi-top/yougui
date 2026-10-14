@@ -99,7 +99,7 @@ D1 一个 batch（事务）内，对每条记录先 `UPDATE counters SET ver=ver
 
 ## 7. 离线 / PWA
 
-`vite-plugin-pwa`（generateSW，autoUpdate）预缓存 app shell 与所有 chunk（含 ZXing，扫码离线可用）；hash 路由避免 GitHub Pages 刷新 404；`base` 与 manifest `scope` 随 `VITE_BASE`。React/MUI/Emotion 同一 vendor chunk；懒加载页面用 `lazyWithRetry`（新版本部署后旧 chunk 404 时刷新一次）。启动时请求 `navigator.storage.persist()`。
+`vite-plugin-pwa`（generateSW，prompt 模式）预缓存 app shell 与所有 chunk（含 ZXing，扫码离线可用）。更新流程见 `lib/pwa.ts`：启动、切回前台、每小时及手动「检查更新」时调用 `registration.update()`；新版本安装好后显示 `UpdateBanner`，用户点「更新」才 `skipWaiting` 并刷新；设置页提供「清除缓存并重新加载」兜底；hash 路由避免 GitHub Pages 刷新 404；`base` 与 manifest `scope` 随 `VITE_BASE`。React/MUI/Emotion 同一 vendor chunk；懒加载页面用 `lazyWithRetry`（新版本部署后旧 chunk 404 时刷新一次）。启动时请求 `navigator.storage.persist()`。
 
 ## 8. 质量门禁
 

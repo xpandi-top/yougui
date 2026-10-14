@@ -9,11 +9,13 @@ import { SearchPage } from './components/pages/SearchPage.tsx'
 import { SetupPage } from './components/pages/SetupPage.tsx'
 import { ErrorBoundary } from './components/ui/ErrorBoundary.tsx'
 import { BottomNav, CONTENT_MAX, paperTexture } from './components/ui/Layout.tsx'
+import { UpdateBanner } from './components/ui/UpdateControls.tsx'
 import { useAppState, useStore } from './context/store.tsx'
 import { useRoute, type Route } from './hooks/useRoute.ts'
 import { lazyWithRetry } from './lib/lazy.ts'
 import { getSyncConfig, syncNow } from './lib/sync.ts'
 import { recordError } from './lib/errors.ts'
+import { useUpdateState } from './lib/pwa.ts'
 import { todayLocal } from './lib/dates.ts'
 import { expiringItems } from './core/index.ts'
 
@@ -132,6 +134,7 @@ export function App() {
   const { household } = useAppState()
   useAutoSync()
   useExpiryBadge()
+  const { available: updateAvailable } = useUpdateState()
   const head = route.parts[0] ?? ''
   const chrome = head !== 'print'
   const needsSetup = !household && !SETUP_EXEMPT.has(head)
@@ -145,7 +148,8 @@ export function App() {
         sx={{
           maxWidth: chrome ? CONTENT_MAX : 'none',
           mx: 'auto',
-          pb: chrome && !needsSetup ? 'calc(88px + env(safe-area-inset-bottom))' : 0,
+          // 底部导航 + 「有新版本」横幅时多留出空间，避免遮挡页面底部内容
+          pb: chrome && !needsSetup ? `calc(${updateAvailable ? 152 : 88}px + env(safe-area-inset-bottom))` : 0,
           '@media print': { pb: 0 },
         }}
       >
@@ -154,6 +158,7 @@ export function App() {
         </ErrorBoundary>
       </Box>
       {chrome && !needsSetup && <BottomNav />}
+      {chrome && <UpdateBanner />}
     </Box>
   )
 }

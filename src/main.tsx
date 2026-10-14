@@ -4,18 +4,9 @@ import { App } from './App.tsx'
 import { makeT, resolveLang } from './context/i18n.tsx'
 import { Providers } from './Providers.tsx'
 import { captureErrors, recordError } from './lib/errors.ts'
+import { initPwa } from './lib/pwa.ts'
 import { getSettings } from './lib/settings.ts'
 import { AppStore } from './lib/store.ts'
-
-async function registerServiceWorker() {
-  if (import.meta.env.DEV || !('serviceWorker' in navigator)) return
-  try {
-    const { registerSW } = await import('virtual:pwa-register')
-    registerSW({ immediate: true })
-  } catch (err) {
-    recordError(err)
-  }
-}
 
 /** 正式网址以 http 打开时跳转到 https（摄像头与 PWA 需要安全上下文）；本机与局域网地址不受影响。 */
 function upgradeToHttps(): boolean {
@@ -54,7 +45,7 @@ async function boot() {
       </Providers>
     </StrictMode>,
   )
-  void registerServiceWorker()
+  void initPwa()
 }
 
 void boot()

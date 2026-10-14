@@ -1,10 +1,11 @@
-import { Box, Chip, List, ListItemButton, ListItemIcon, ListItemText, Typography } from '@mui/material'
+import { Chip, List, ListItemButton, ListItemIcon, ListItemText } from '@mui/material'
 import { unlinkedAttachments } from '../../core/index.ts'
 import { useT, type UiKey } from '../../context/i18n.tsx'
 import { useAppState } from '../../context/store.tsx'
 import { navigate } from '../../hooks/useRoute.ts'
 import { syncFeatureEnabled, useSyncConfig } from '../../lib/sync.ts'
 import { Icon } from '../ui/Icon.tsx'
+import { UpdateControls } from '../ui/UpdateControls.tsx'
 import { Card, Page, PageHeader, Section } from '../ui/Layout.tsx'
 
 interface Entry {
@@ -75,11 +76,7 @@ export default function MorePage() {
             { icon: 'file', label: 'more.help', help: 'more.helpHelp', path: '/help' },
           ]}
         />
-        <Box sx={{ textAlign: 'center', color: 'text.secondary' }}>
-          <Typography variant="caption">
-            {t('app.name')} v{__APP_VERSION__} · {__BUILD_ID__}
-          </Typography>
-        </Box>
+        <UpdateControls />
       </Page>
     </>
   )

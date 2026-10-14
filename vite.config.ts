@@ -30,7 +30,8 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // 发现新版本先提示（UpdateBanner），用户点「更新」才切换，避免编辑中途自动刷新
+        registerType: 'prompt',
         injectRegister: false,
         includeAssets: ['favicon.ico', 'favicon.svg', 'favicon-16.png', 'favicon-32.png', 'apple-touch-icon.png', 'app-icon.svg'],
         manifest: {
