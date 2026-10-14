@@ -51,4 +51,6 @@ npm run dev                                            # http://localhost:8787�
 
 ## 图标
 
-`assets/icons/manifest.json` 来自交付包 `icons/manifest.json`（ui-* / items-*，80 枚）；`assets/icons/rooms.json` 来自 `room-icons/manifest.json`（rooms-*，24 枚）。更新图标时替换对应文件；不要复用旧 id 表示不同东西。新增房间图标时同步在 `assets/locales/*.json` 加 `room.<key>` 名称（`catalog.test.ts` 会检查）。App 图标（favicon、iPhone 主屏幕、PWA 普通与遮罩图标）用 `app-icons/` 定稿文件，复制到 `public/`：`favicon.ico/.svg(小尺寸版)/-16/-32.png`、`apple-touch-icon.png`、`pwa-192/512.png`、`maskable-192/512.png`、`app-icon.svg`（启动画面）。应用内品牌标记是 `src/components/ui/BrandMark.tsx`（同一菱形「归」矢量轮廓，≤32px 自动用光学调整版）。更换图标时替换这些文件，并同步 BrandMark 中的路径。
+`assets/icons/manifest.json` 来自交付包 `icons/manifest.json`（ui-* / items-*，80 枚）；`assets/icons/rooms.json` 来自 `room-icons/manifest.json`（rooms-*，24 枚）。更新图标时替换对应文件；不要复用旧 id 表示不同东西。新增房间图标时同步在 `assets/locales/*.json` 加 `room.<key>` 名称（`catalog.test.ts` 会检查）。App 图标（favicon、iPhone 主屏幕、PWA 普通与遮罩图标）用 `app-icons/` 定稿文件，复制到 `public/`：`favicon.ico/.svg(小尺寸版)/-16/-32.png`、`ios-icon-152/167/180.png`（iPhone/iPad 主屏幕）、`icon-192/512.png`、`icon-maskable-192/512.png`、`app-icon.svg`（启动画面）；清单文件为 `app.webmanifest`。应用内品牌标记是 `src/components/ui/BrandMark.tsx`（同一菱形「归」矢量轮廓，≤32px 自动用光学调整版）。
+
+**更换图标时必须改文件名**（例如 `ios-icon-180-v2.png`）并同步 `index.html` 与 `vite.config.ts`：iOS 只在「添加到主屏幕」时抓取图标，且会缓存失败或旧的结果，沿用旧文件名会继续显示旧图标或文字图标。

@@ -15,11 +15,15 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
-    <!-- iOS 只在「添加到主屏幕」时抓取一次图标：提供各尺寸 + 无尺寸默认，降低抓取失败退回文字图标的概率 -->
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <!--
+      iOS 只在「添加到主屏幕」时抓取图标，并会缓存失败结果（之后一直显示文字图标）。
+      图标文件名带版本（ios-icon-*），更换图标时改文件名，避免命中 iOS 的旧缓存。
+    -->
+    <link rel="apple-touch-icon" href="/ios-icon-180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/ios-icon-152.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/ios-icon-167.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/ios-icon-180.png" />
+    <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/ios-icon-180.png" />
     <title>有归 · 家庭收纳</title>
     <style>
       html { -webkit-text-size-adjust: 100%; }

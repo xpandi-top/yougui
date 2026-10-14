@@ -32,6 +32,8 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         // 发现新版本先提示（UpdateBanner），用户点「更新」才切换，避免编辑中途自动刷新
         registerType: 'prompt',
+        // 新文件名：避开 iOS 对旧 manifest.webmanifest 的缓存
+        manifestFilename: 'app.webmanifest',
         // manifest 图标已被 globPatterns 覆盖，避免重复条目
         includeManifestIcons: false,
         injectRegister: false,
@@ -47,15 +49,17 @@ export default defineConfig(({ mode }) => {
           background_color: '#F4EFE5',
           theme_color: '#F4EFE5',
           // App 图标定稿：宣纸底、朱砂菱形框、「归」字（源文件在 app-icons/）
+          // 只列不透明 PNG（iOS 从 manifest 取主屏幕图标时不支持 SVG）；含 iOS 首选的 180×180
           icons: [
-            { src: 'pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: 'maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-            { src: 'maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: 'ios-icon-180.png', sizes: '180x180', type: 'image/png', purpose: 'any' },
+            { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: 'icon-maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+            { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
         },
         workbox: {
-          // manifest.webmanifest 由插件自动加入预缓存，这里不重复匹配
+          // app.webmanifest 由插件自动加入预缓存，这里不重复匹配
           globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
           navigateFallback: 'index.html',
           cleanupOutdatedCaches: true,
