@@ -30,7 +30,7 @@ import { errorText, useT } from '../../context/i18n.tsx'
 import { useFeedback } from '../../context/feedback.tsx'
 import { useSnap, useStore } from '../../context/store.tsx'
 import { useCommit } from '../../hooks/useCommit.ts'
-import { checkFile, formatBytes, imageSize, optimizePhoto, sha256, sniffMime } from '../../lib/files.ts'
+import { checkFile, defaultAttachmentName, formatBytes, imageSize, optimizePhoto, sha256, sniffMime } from '../../lib/files.ts'
 import { newId } from '../../lib/store.ts'
 import { Icon } from '../ui/Icon.tsx'
 import { EntityPicker } from './Basic.tsx'
@@ -46,10 +46,6 @@ interface Props {
 }
 
 type Phase = 'idle' | 'optimizing' | 'saving'
-
-function baseName(name: string): string {
-  return name.replace(/\.[^.]+$/, '').slice(0, 120) || name
-}
 
 export function AttachmentAddDialog({ open, entityId, asCover, onClose, onDone }: Props) {
   const t = useT()
@@ -106,7 +102,9 @@ export function AttachmentAddDialog({ open, entityId, asCover, onClose, onDone }
     const m = real ?? c.mime
     setFile(f)
     setMime(m)
-    setName(baseName(f.name))
+    const isImage = m.startsWith('image/')
+    const stamp = new Date().toLocaleString(undefined, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    setName(defaultAttachmentName(f.name, isImage, entityId ? snap.entities[entityId]?.name : undefined, `${t(isImage ? 'attType.photo' : 'attType.document')} ${stamp}`))
     setTypeKey(m.startsWith('image/') ? 'photo' : 'document')
     setPreview(m.startsWith('image/') && !/hei[cf]/.test(m) ? URL.createObjectURL(f) : null)
   }

@@ -135,3 +135,26 @@ export function formatBytes(n: number | undefined): string {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
   return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
+
+// 相机/系统生成的无意义文件名：image.jpg、IMG_1234.HEIC、PXL_20261013_1203.jpg、photo (2).png、截屏2026…
+const GENERIC_NAME = /^(image|img|photo|pic|picture|pxl|dsc|dscn|dcim|mvimg|screenshot|screen shot|scan|截屏|截图|照片|图片|相片)?[\s_\-.()\d]*$/i
+
+export function baseFileName(name: string): string {
+  return name.replace(/\.[^.]+$/, '').trim()
+}
+
+export function isGenericFileName(name: string): boolean {
+  const base = baseFileName(name)
+  return !base || GENERIC_NAME.test(base)
+}
+
+/**
+ * 附件默认名称：照片或无意义文件名优先用所属物品/房间的名称；
+ * 有意义的文件名（如 costco-receipt.pdf）保留；都没有时用「照片/文件 + 时间」。
+ */
+export function defaultAttachmentName(fileName: string, isImage: boolean, entityName: string | undefined, fallback: string): string {
+  const generic = isGenericFileName(fileName)
+  if (entityName && (isImage || generic)) return entityName.slice(0, 120)
+  if (!generic) return baseFileName(fileName).slice(0, 120)
+  return fallback
+}

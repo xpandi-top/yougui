@@ -1,7 +1,7 @@
 {
   "name": "yougui",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "description": "有归 Homebase — 家庭收纳登记 PWA（本地优先，可选云同步）",
   "scripts": {
