@@ -13,7 +13,14 @@ import {
   commitBatch,
   createEntity,
   createLabels,
+  createWithBarcode,
+  daysUntil,
   displayProductCode,
+  expiringItems,
+  expiryStatus,
+  localDate,
+  setProductDetails,
+  updateEntity,
   deleteAttachment,
   deleteEntity,
   diffCount,
@@ -435,5 +442,47 @@ describe('手输商品码纠错（真实样例：Citadels UPC-A 841333113513）'
 
   it('校验位错误的 12 位不给猜测', () => {
     expect(classifyScan('841333113514')).toMatchObject({ kind: 'invalidProduct', suggestions: [] })
+  })
+})
+
+describe('有效期与产品信息', () => {
+  it('有效期格式校验；位置不能设有效期', () => {
+    const ctx = makeCtx()
+    const r = run(emptySnapshot(), ctx, (tx) => createEntity(tx, { kind: 'item', name: '酱油', expiresAt: '2026-12-31' }))
+    expect(r.out.expiresAt).toBe('2026-12-31')
+    expectCode(() => run(emptySnapshot(), makeCtx(), (tx) => createEntity(tx, { kind: 'item', name: 'x', expiresAt: '2026-13-01' })), 'date.invalid')
+    const loc = run(emptySnapshot(), makeCtx(), (tx) => createEntity(tx, { kind: 'location', name: '厨房' }))
+    expectCode(() => run(loc.snap, makeCtx(5000), (tx) => updateEntity(tx, loc.out.id, { expiresAt: '2026-12-31' })), 'date.location')
+    const cleared = run(r.snap, ctx, (tx) => updateEntity(tx, r.out.id, { expiresAt: null }))
+    expect(cleared.out.expiresAt).toBeNull()
+  })
+
+  it('临期判断：过期 / 今天 / 30 天内 / 正常；用完或取出的不提醒', () => {
+    const ctx = makeCtx()
+    const { snap, out } = run(emptySnapshot(), ctx, (tx) => ({
+      old: createEntity(tx, { kind: 'item', name: '过期牛奶', expiresAt: '2026-10-01' }),
+      today: createEntity(tx, { kind: 'item', name: '今天', expiresAt: '2026-10-13' }),
+      soon: createEntity(tx, { kind: 'item', name: '酱油', expiresAt: '2026-11-01' }),
+      ok: createEntity(tx, { kind: 'item', name: '罐头', expiresAt: '2027-10-01' }),
+      empty: createEntity(tx, { kind: 'item', name: '用完的醋', expiresAt: '2026-10-02', quantity: 0 }),
+    }))
+    expect(daysUntil('2026-11-01', '2026-10-13')).toBe(19)
+    expect(expiryStatus(out.old, '2026-10-13')).toBe('expired')
+    expect(expiryStatus(out.today, '2026-10-13')).toBe('today')
+    expect(expiryStatus(out.soon, '2026-10-13')).toBe('soon')
+    expect(expiryStatus(out.ok, '2026-10-13')).toBe('ok')
+    expect(expiringItems(snap, '2026-10-13').map((e) => e.name)).toEqual(['过期牛奶', '今天', '酱油'])
+    expect(localDate(Date.UTC(2026, 9, 13, 20, 0), -480)).toBe('2026-10-14')
+  })
+
+  it('用商品码新建时保存产品信息到型号', () => {
+    const ctx = makeCtx()
+    const code = parseProductCode('841333113513')!
+    const r = run(emptySnapshot(), ctx, (tx) =>
+      createWithBarcode(tx, { kind: 'item', name: 'Citadels' }, code, { name: 'Citadels (Revised Edition)', brand: 'Z-Man Games', model: 'ZMGZC01', category: 'Board Games', source: 'upcitemdb', at: 1 }),
+    )
+    expect(r.snap.types[r.out.typeId!].product).toMatchObject({ brand: 'Z-Man Games', model: 'ZMGZC01' })
+    const cleared = run(r.snap, ctx, (tx) => setProductDetails(tx, r.out.typeId!, null))
+    expect(cleared.snap.types[r.out.typeId!].product).toBeNull()
   })
 })

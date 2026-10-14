@@ -2,7 +2,7 @@
 import { Tx } from './tx.ts'
 import type { ProductCode, ScanResult } from './codes.ts'
 import { createEntity, createWithBarcode, findTypeByBarcode, labelByCode, labelByToken, liveEntity, moveEntity, putIn, stocksOfType, withdraw } from './ops.ts'
-import { DomainError, type Entity, type Label, type Snapshot } from './types.ts'
+import { DomainError, type Entity, type Label, type ProductDetails, type Snapshot } from './types.ts'
 
 export type BatchOp = 'putIn' | 'withdraw' | 'move'
 
@@ -14,7 +14,7 @@ export interface BatchLine {
   /** 现有实体 */
   entityId?: string
   /** 入库时在目标处新建库存：已知型号（typeId）或新商品码（product + 用户填写的名称） */
-  create?: { typeId?: string; product?: ProductCode }
+  create?: { typeId?: string; product?: ProductCode; details?: ProductDetails | null }
   /** null = 整件（独立实物 / 不追踪数量） */
   qty: number | null
 }
@@ -151,7 +151,7 @@ export function commitBatch(tx: Tx, op: BatchOp, targetId: string | null, lines:
         if (op !== 'putIn') throw new DomainError('batch.createOnlyPutIn')
         const base = { kind: 'item' as const, name: l.name, parentId: targetId, quantity: l.qty ?? 1 }
         if (l.create.typeId) createEntity(tx, { ...base, typeId: l.create.typeId })
-        else if (l.create.product) createWithBarcode(tx, base, l.create.product)
+        else if (l.create.product) createWithBarcode(tx, base, l.create.product, l.create.details)
         continue
       }
       const e = liveEntity(tx, l.entityId!)

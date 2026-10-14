@@ -515,11 +515,11 @@ export default function ScanPage() {
       <ProductNameDialog
         product={ask?.kind === 'unknownProduct' ? ask.product : null}
         onClose={() => setAsk(null)}
-        onSubmit={(name) => {
+        onSubmit={(name, details) => {
           if (ask?.kind !== 'unknownProduct') return
           const p = ask.product
           setAsk(null)
-          applyResolution(addLine(lines, { key: `p:${p.normalized}`, name: name.trim(), create: { product: p }, qty: 1 }), { kind: 'product', product: p })
+          applyResolution(addLine(lines, { key: `p:${p.normalized}`, name: name.trim(), create: { product: p, details }, qty: 1 }), { kind: 'product', product: p })
         }}
       />
 

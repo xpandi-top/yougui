@@ -6,8 +6,9 @@ import { gzipSync } from 'node:zlib'
 
 const DIST = new URL('../dist/', import.meta.url).pathname
 const BUDGET = {
-  initialJsGzip: 260 * 1024, // index.html 直接引用的 JS（含 vendor）
-  largestFileGzip: 170 * 1024,
+  // 0.4.0 起含 MUI Autocomplete（分类选择），vendor 约 172 KB
+  initialJsGzip: 280 * 1024, // index.html 直接引用的 JS（含 vendor）
+  largestFileGzip: 185 * 1024,
   distTotal: 4 * 1024 * 1024,
 }
 

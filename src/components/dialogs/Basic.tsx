@@ -154,6 +154,8 @@ interface IconPickerProps {
   /** 可选的图标集：物品只用 items；位置先房间、再物品（柜子、抽屉、收纳盒等） */
   sets?: Array<Extract<IconKind, 'items' | 'rooms'>>
   title?: string
+  /** 提供时显示「拍照作封面」：在选图标时直接改用照片 */
+  onPhoto?: () => void
   onPick: (iconKey: string | null) => void
   onClose: () => void
 }
@@ -162,7 +164,7 @@ const SET_ICONS = { items: ITEM_ICONS, rooms: ROOM_ICONS }
 const SET_GROUPS = { items: ITEM_ICON_GROUPS, rooms: ROOM_ICON_GROUPS }
 
 /** 图标选择：名称/类别检索；分组不等于分类，也不会开启容器。 */
-export function IconPicker({ open, value, sets = ['items'], title, onPick, onClose }: IconPickerProps) {
+export function IconPicker({ open, value, sets = ['items'], title, onPhoto, onPick, onClose }: IconPickerProps) {
   const t = useT()
   const { lang } = useI18n()
   const valueSet = iconById(value)?.kind
@@ -255,7 +257,12 @@ export function IconPicker({ open, value, sets = ['items'], title, onPick, onClo
         </Box>
         {!list.length && <Typography color="text.secondary">{t('picker.noMatch')}</Typography>}
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ flexWrap: 'wrap', gap: 1 }}>
+        {onPhoto && (
+          <Button variant="outlined" startIcon={<Icon name="camera" size={16} />} onClick={onPhoto}>
+            {t('cover.add')}
+          </Button>
+        )}
         <Button onClick={() => onPick(null)}>{t('icon.useDefault')}</Button>
         <Box sx={{ flex: 1 }} />
         <Button onClick={onClose}>{t('common.cancel')}</Button>

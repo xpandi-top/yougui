@@ -1,6 +1,7 @@
 import { Box, Button, Chip, List, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { useMemo, useState } from 'react'
-import { compareEntities, isEffectivelyOut, type Entity } from '../../core/index.ts'
+import { compareEntities, expiringItems, isEffectivelyOut, type Entity } from '../../core/index.ts'
+import { todayLocal } from '../../lib/dates.ts'
 import { useT } from '../../context/i18n.tsx'
 import { useSnap } from '../../context/store.tsx'
 import { navigate, q, useRoute } from '../../hooks/useRoute.ts'
@@ -8,7 +9,7 @@ import { EntityRow } from '../ui/EntityBits.tsx'
 import { Icon } from '../ui/Icon.tsx'
 import { Card, EmptyState, Page, PageHeader } from '../ui/Layout.tsx'
 
-const FILTERS = ['all', 'unassigned', 'out', 'tracked', 'empty', 'containers'] as const
+const FILTERS = ['all', 'expiring', 'unassigned', 'out', 'tracked', 'empty', 'containers'] as const
 type Filter = (typeof FILTERS)[number]
 
 const PAGE = 100
@@ -23,8 +24,10 @@ export function ItemsPage() {
 
   const list = useMemo(() => {
     const items = Object.values(snap.entities).filter((e) => !e.deletedAt && e.kind === 'item')
+    const soon = new Set(expiringItems(snap, todayLocal()).map((e) => e.id))
     const pred: Record<Filter, (e: Entity) => boolean> = {
       all: () => true,
+      expiring: (e) => soon.has(e.id),
       unassigned: (e) => e.parentId === null && e.state === 'in',
       out: (e) => isEffectivelyOut(snap.entities, e.id),
       tracked: (e) => e.quantity !== null,
@@ -32,6 +35,7 @@ export function ItemsPage() {
       containers: (e) => e.canContain,
     }
     const out = items.filter(pred[f])
+    if (f === 'expiring') return out.sort((a, b) => a.expiresAt!.localeCompare(b.expiresAt!))
     return sort === 'name' ? out.sort(compareEntities) : out.sort((a, b) => b.updatedAt - a.updatedAt)
   }, [snap, f, sort])
 

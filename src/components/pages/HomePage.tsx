@@ -1,7 +1,9 @@
 import { Box, Button, ButtonBase, Chip, IconButton, List, ListItem, ListItemText, Stack, Typography } from '@mui/material'
 import { useMemo } from 'react'
 import { LOCATION_ICON, iconById } from '../../catalog.ts'
-import { countItems, rooms, unassigned, type Entity } from '../../core/index.ts'
+import { countItems, expiringItems, rooms, unassigned, type Entity } from '../../core/index.ts'
+import { todayLocal } from '../../lib/dates.ts'
+import { EntityRow } from '../ui/EntityBits.tsx'
 import { useI18n, useT } from '../../context/i18n.tsx'
 import { useAppState } from '../../context/store.tsx'
 import { useCommit } from '../../hooks/useCommit.ts'
@@ -81,6 +83,7 @@ export function HomePage() {
     }
   }, [snap])
   const roomList = rooms(snap)
+  const expiring = useMemo(() => expiringItems(snap, todayLocal()), [snap])
   const recent = ops.filter((o) => o.type !== 'undo' && !o.undoneBy).slice(0, 5)
 
   return (
@@ -181,6 +184,27 @@ export function HomePage() {
           )}
           {stats.out > 0 && <Chip clickable onClick={() => navigate('/items?f=out')} label={t('home.out', { count: stats.out })} color="warning" variant="outlined" />}
         </Stack>
+      )}
+
+      {expiring.length > 0 && (
+        <Section
+          title={t('home.expiring', { count: expiring.length })}
+          action={
+            <Button size="small" endIcon={<Icon name="next" size={16} />} onClick={() => navigate('/items?f=expiring')}>
+              {t('common.all')}
+            </Button>
+          }
+        >
+          <Card>
+            <List disablePadding>
+              {expiring.slice(0, 4).map((e) => (
+                <Box key={e.id} sx={{ borderBottom: 1, borderColor: 'divider', '&:last-child': { borderBottom: 0 } }}>
+                  <EntityRow snap={snap} entity={e} dense />
+                </Box>
+              ))}
+            </List>
+          </Card>
+        </Section>
       )}
 
       <Section

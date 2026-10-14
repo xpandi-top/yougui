@@ -17,7 +17,21 @@ async function registerServiceWorker() {
   }
 }
 
+/** 正式网址以 http 打开时跳转到 https（摄像头与 PWA 需要安全上下文）；本机与局域网地址不受影响。 */
+function upgradeToHttps(): boolean {
+  const pub = (import.meta.env.VITE_PUBLIC_URL as string | undefined) ?? ''
+  if (location.protocol !== 'http:' || !pub.startsWith('https://')) return false
+  try {
+    if (new URL(pub).hostname !== location.hostname) return false
+  } catch {
+    return false
+  }
+  location.replace(`https://${location.host}${location.pathname}${location.search}${location.hash}`)
+  return true
+}
+
 async function boot() {
+  if (upgradeToHttps()) return
   captureErrors()
   const el = document.getElementById('root')!
   let store: AppStore

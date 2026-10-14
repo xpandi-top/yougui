@@ -12,6 +12,7 @@ import {
   type EntityKind,
   type ItemType,
   type Label,
+  type ProductDetails,
   type LinkTargetKind,
   type Operation,
   type Snapshot,
@@ -67,6 +68,15 @@ export interface CreateInput {
   note?: string
   category?: string
   typeId?: string | null
+  expiresAt?: string | null
+}
+
+const DATE_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+
+export function cleanDate(v: string | null | undefined): string | null {
+  if (v === null || v === undefined || v === '') return null
+  if (!DATE_RE.test(v)) throw new DomainError('date.invalid')
+  return v
 }
 
 export function createEntity(tx: Tx, input: CreateInput): Entity {
@@ -95,6 +105,7 @@ export function createEntity(tx: Tx, input: CreateInput): Entity {
     typeId: input.typeId ?? null,
     category: cleanText(input.category, 40),
     note: cleanText(input.note),
+    expiresAt: isLoc ? null : cleanDate(input.expiresAt),
   })
 }
 
@@ -104,6 +115,7 @@ export interface EntityPatch {
   note?: string
   category?: string
   unit?: string
+  expiresAt?: string | null
 }
 
 export function updateEntity(tx: Tx, id: string, patch: EntityPatch): Entity {
@@ -114,6 +126,10 @@ export function updateEntity(tx: Tx, id: string, patch: EntityPatch): Entity {
   if (patch.note !== undefined) next.note = cleanText(patch.note)
   if (patch.category !== undefined) next.category = cleanText(patch.category, 40)
   if (patch.unit !== undefined) next.unit = cleanText(patch.unit, 12)
+  if (patch.expiresAt !== undefined) {
+    if (e.kind === 'location' && patch.expiresAt) throw new DomainError('date.location')
+    next.expiresAt = cleanDate(patch.expiresAt)
+  }
   return tx.put('entities', next)
 }
 
@@ -261,10 +277,63 @@ export function removeBarcode(tx: Tx, typeId: string, normalized: string): void 
 }
 
 /** 用商品码新建物品：码已知 → 归入该型号；未知 → 新建型号并记住关联。 */
-export function createWithBarcode(tx: Tx, input: CreateInput, code: ProductCode): Entity {
+export function createWithBarcode(tx: Tx, input: CreateInput, code: ProductCode, product?: ProductDetails | null): Entity {
   const owner = findTypeByBarcode(tx.snap, code.normalized)
   const e = createEntity(tx, { ...input, typeId: owner?.id ?? null })
-  return owner ? e : addBarcode(tx, e.id, code)
+  const out = owner ? e : addBarcode(tx, e.id, code)
+  if (product) setProductDetails(tx, out.typeId!, product)
+  return out
+}
+
+/** 保存联网查到的产品信息到型号（同型号各处库存共享）。 */
+export function setProductDetails(tx: Tx, typeId: string, product: ProductDetails | null): ItemType {
+  const t = tx.snap.types[typeId]
+  if (!t || t.deletedAt) throw new DomainError('type.missing')
+  const clean = product
+    ? {
+        name: cleanText(product.name, 120),
+        brand: cleanText(product.brand, 60),
+        model: cleanText(product.model, 60),
+        category: cleanText(product.category, 40),
+        source: cleanText(product.source, 40),
+        at: product.at,
+      }
+    : null
+  return tx.put('types', { ...t, product: clean })
+}
+
+// ───────────────────────── 有效期 ─────────────────────────
+
+export const EXPIRY_SOON_DAYS = 30
+
+function dayNumber(date: string): number {
+  const [y, m, d] = date.split('-').map(Number)
+  return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000)
+}
+
+/** 距离有效期的天数（负数 = 已过期）。today 由调用方按本地时区给出 YYYY-MM-DD。 */
+export function daysUntil(expiresAt: string, today: string): number {
+  return dayNumber(expiresAt) - dayNumber(today)
+}
+
+export type ExpiryStatus = 'expired' | 'today' | 'soon' | 'ok'
+
+export function expiryStatus(e: Entity, today: string, soonDays = EXPIRY_SOON_DAYS): ExpiryStatus | null {
+  if (!e.expiresAt || e.kind !== 'item') return null
+  const d = daysUntil(e.expiresAt, today)
+  return d < 0 ? 'expired' : d === 0 ? 'today' : d <= soonDays ? 'soon' : 'ok'
+}
+
+/** 在库、设置了有效期且已过期或临期的物品，按日期先后。 */
+export function expiringItems(snap: Snapshot, today: string, soonDays = EXPIRY_SOON_DAYS): Entity[] {
+  return Object.values(snap.entities)
+    .filter((e) => !e.deletedAt && e.state === 'in' && e.quantity !== 0 && expiryStatus(e, today, soonDays) !== null && expiryStatus(e, today, soonDays) !== 'ok')
+    .sort((a, b) => a.expiresAt!.localeCompare(b.expiresAt!))
+}
+
+/** 本地时区的今天（YYYY-MM-DD）。Date 在 ES2022 lib 中，可在 core 使用。 */
+export function localDate(ms: number, offsetMinutes: number): string {
+  return new Date(ms - offsetMinutes * 60_000).toISOString().slice(0, 10)
 }
 
 // ───────────────────────── 标签 ─────────────────────────

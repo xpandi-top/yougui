@@ -19,7 +19,7 @@
 | ↳ `household` | | `Household`（id 固定 `home`） | ✅ | `household` | 单例，便于多设备合并 |
 | ↳ `syncConflicts` | | `ConflictEntry[]`（≤200） | ❌ | ❌ | 被云端版本替换掉的本机版本 |
 
-`Entity.iconKey`：图标稳定 id，物品为 `items-*`，位置为 `rooms-*`（房间图标库）或 `items-*`（柜子、抽屉等收纳图标）；未知 id 回退默认图标。`Entity.coverId`：封面照片附件 id（物品与位置都可用）。
+`Entity.iconKey`：图标稳定 id，物品为 `items-*`，位置为 `rooms-*`（房间图标库）或 `items-*`（柜子、抽屉等收纳图标）；未知 id 回退默认图标。`Entity.coverId`：封面照片附件 id（物品与位置都可用）。`Entity.expiresAt`：有效期（本地日期 `YYYY-MM-DD`，仅物品）。`ItemType.product`：联网查到并保存的产品信息 `{name, brand, model, category, source, at}`。
 
 公共字段：`id, createdAt, updatedAt, rev, deletedAt?`；同步元数据 `_srv?`（服务端版本）、`_dirty?`（待上传），导出备份时会去掉。
 

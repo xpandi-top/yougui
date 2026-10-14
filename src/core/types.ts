@@ -43,6 +43,8 @@ export interface Entity extends BaseRecord {
   typeId?: string | null
   category?: string
   note?: string
+  /** 有效期（本地日期 YYYY-MM-DD），用于临期提醒；位置不使用 */
+  expiresAt?: string | null
 }
 
 /** 物品型号：同一型号可分布在多个位置（每处一条 Entity，typeId 相同）。 */
@@ -50,6 +52,18 @@ export interface ItemType extends BaseRecord {
   name: string
   /** 规范化后的商品码（UPC-A 统一为 EAN-13） */
   barcodes: string[]
+  /** 联网查到并经用户保存的产品信息（公开商品库，仅供参考） */
+  product?: ProductDetails | null
+}
+
+export interface ProductDetails {
+  name?: string
+  brand?: string
+  model?: string
+  category?: string
+  source?: string
+  /** 查询时间 */
+  at: number
 }
 
 export type AttachmentTypeKey =

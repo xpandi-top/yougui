@@ -5,6 +5,9 @@ import { useT } from '../../context/i18n.tsx'
 import { useSnap } from '../../context/store.tsx'
 import { goBack, useRoute } from '../../hooks/useRoute.ts'
 import { qrSvg } from '../../lib/qr.ts'
+import { exportLabelsPdf, printUnsupported, shareOrDownload } from '../../lib/labelExport.ts'
+import { recordError } from '../../lib/errors.ts'
+import { useFeedback } from '../../context/feedback.tsx'
 import { appUrl, updateSettings, useSettings, type LabelSize } from '../../lib/settings.ts'
 import { Icon } from '../ui/Icon.tsx'
 
@@ -26,6 +29,7 @@ export default function PrintPage() {
   const snap = useSnap()
   const { query } = useRoute()
   const settings = useSettings()
+  const { toast } = useFeedback()
   const [layout, setLayout] = useState<Layout>('a4')
   const [svgs, setSvgs] = useState<Record<string, string>>({})
   const size = SIZES[settings.labelSize]
@@ -51,6 +55,31 @@ export default function PrintPage() {
   }, [labels, base])
 
   const local = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])/.test(base)
+  const noPrint = printUnsupported()
+  const mobile = window.matchMedia?.('(pointer: coarse)').matches ?? false
+  const [exporting, setExporting] = useState(false)
+
+  async function exportPdf() {
+    setExporting(true)
+    try {
+      const items = labels.map((l) => {
+        const e = l.status === 'bound' && l.entityId ? snap.entities[l.entityId] : null
+        return {
+          label: l,
+          name: e && settings.labelShowName ? e.name : undefined,
+          path: e && settings.labelShowPath ? pathNames(snap.entities, e.id).join(PATH_SEP) : undefined,
+        }
+      })
+      const blob = await exportLabelsPdf(items, { appUrl: base, size, layout })
+      const r = await shareOrDownload(blob, `yougui-labels-${settings.labelSize}-${layout}.pdf`)
+      if (r === 'downloaded') toast(t('print.downloaded'))
+    } catch (err) {
+      recordError(err)
+      toast(t('print.exportFailed'), { severity: 'error' })
+    } finally {
+      setExporting(false)
+    }
+  }
   const pageCss =
     layout === 'roll'
       ? `@page { size: ${size.w}mm ${size.h}mm; margin: 0 } .yg-label { page-break-after: always; break-after: page; border: 0 !important; }`
@@ -60,15 +89,20 @@ export default function PrintPage() {
     <Box sx={{ bgcolor: '#e9e5dc', minHeight: '100dvh', '@media print': { bgcolor: '#fff', minHeight: 0 } }}>
       <style>{`@media print { ${pageCss} body { background: #fff !important; } .MuiSnackbar-root { display: none !important; } }`}</style>
       <Box sx={{ p: 2, maxWidth: 760, mx: 'auto', '@media print': { display: 'none' } }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 2 }}>
+        <Stack direction="row" sx={{ alignItems: 'center', mb: 2, gap: 1, flexWrap: 'wrap' }}>
           <Button startIcon={<Icon name="back" size={18} />} onClick={() => goBack('/labels')}>
             {t('common.back')}
           </Button>
-          <Typography variant="h3" sx={{ flex: 1 }}>
+          <Typography variant="h3" sx={{ flex: '1 1 140px' }}>
             {t('print.title', { count: labels.length })}
           </Typography>
-          <Button variant="contained" color="secondary" startIcon={<Icon name="print" size={18} />} onClick={() => window.print()} disabled={!labels.length}>
-            {t('print.print')}
+          {!noPrint && (
+            <Button variant={mobile ? 'outlined' : 'contained'} color="secondary" startIcon={<Icon name="print" size={18} />} onClick={() => window.print()} disabled={!labels.length || exporting}>
+              {t('print.printShort')}
+            </Button>
+          )}
+          <Button variant={mobile || noPrint ? 'contained' : 'outlined'} color="secondary" startIcon={<Icon name="download" size={18} />} onClick={() => void exportPdf()} disabled={!labels.length || exporting}>
+            {exporting ? t('print.exporting') : t('print.exportPdf')}
           </Button>
         </Stack>
         <Stack direction="row" sx={{ gap: 1.5, flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
@@ -89,6 +123,11 @@ export default function PrintPage() {
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
           {t('print.help')}
         </Typography>
+        {noPrint && (
+          <Alert severity="info" sx={{ mt: 1 }}>
+            {t('print.iosStandalone')}
+          </Alert>
+        )}
         {local && (
           <Alert severity="warning" sx={{ mt: 1 }}>
             {t('print.localUrl', { url: base })}

@@ -61,10 +61,10 @@ async function openFacts(code: string, lang: 'zh' | 'en'): Promise<ProductInfo |
 
 const inflight = new Map<string, Promise<ClientLookup>>()
 
-export function lookupProduct(product: ProductCode, lang: 'zh' | 'en'): Promise<ClientLookup> {
+export function lookupProduct(product: ProductCode, lang: 'zh' | 'en', opts: { force?: boolean } = {}): Promise<ClientLookup> {
   if (!getSettings().productLookup) return Promise.resolve({ status: 'disabled' })
   const code = product.normalized
-  const hit = cacheGet(code)
+  const hit = opts.force ? null : cacheGet(code)
   if (hit) return Promise.resolve(hit.status === 'found' ? { status: 'found', info: hit.info } : { status: 'notFound' })
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return Promise.resolve({ status: 'offline' })
   let p = inflight.get(code)

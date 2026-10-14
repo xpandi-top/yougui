@@ -5,6 +5,7 @@ import { isEffectivelyOut, pathNames, PATH_SEP, type Entity, type Snapshot } fro
 import { useT } from '../../context/i18n.tsx'
 import { useFileUrl } from '../../hooks/useFileUrl.ts'
 import { navigate } from '../../hooks/useRoute.ts'
+import { ExpiryChip } from './Fields.tsx'
 import { Icon } from './Icon.tsx'
 
 /** 物品显示优先级：有效封面照片 → 自选图标 → 默认收纳盒（位置用房间图标）。 */
@@ -78,6 +79,7 @@ export function StateChips({ entity }: { entity: Entity }) {
     <>
       {entity.kind === 'item' && entity.canContain && <Chip size="small" variant="outlined" label={t('entity.container')} sx={{ height: 20, fontSize: 11 }} />}
       {entity.state === 'out' && <Chip size="small" color="warning" variant="outlined" label={t('state.out')} sx={{ height: 20, fontSize: 11 }} />}
+      {entity.state === 'in' && entity.quantity !== 0 && <ExpiryChip entity={entity} />}
     </>
   )
 }

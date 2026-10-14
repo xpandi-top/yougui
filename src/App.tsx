@@ -14,6 +14,8 @@ import { useRoute, type Route } from './hooks/useRoute.ts'
 import { lazyWithRetry } from './lib/lazy.ts'
 import { getSyncConfig, syncNow } from './lib/sync.ts'
 import { recordError } from './lib/errors.ts'
+import { todayLocal } from './lib/dates.ts'
+import { expiringItems } from './core/index.ts'
 
 const ScanPage = lazyWithRetry(() => import('./components/pages/ScanPage.tsx'))
 const MorePage = lazyWithRetry(() => import('./components/pages/MorePage.tsx'))
@@ -105,6 +107,18 @@ function useAutoSync() {
   }, [store, version])
 }
 
+/** 主屏幕图标角标：已过期且仍在库的物品数（支持的平台，如 iOS 16.4+ 主屏幕应用）。 */
+function useExpiryBadge() {
+  const { snap } = useAppState()
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> }
+    if (!nav.setAppBadge) return
+    const today = todayLocal()
+    const n = expiringItems(snap, today).filter((e) => e.expiresAt! < today).length
+    void (n ? nav.setAppBadge(n) : nav.clearAppBadge?.())?.catch(() => undefined)
+  }, [snap])
+}
+
 function Loading() {
   return (
     <Box sx={{ display: 'grid', placeItems: 'center', py: 10 }}>
@@ -117,6 +131,7 @@ export function App() {
   const route = useRoute()
   const { household } = useAppState()
   useAutoSync()
+  useExpiryBadge()
   const head = route.parts[0] ?? ''
   const chrome = head !== 'print'
   const needsSetup = !household && !SETUP_EXEMPT.has(head)

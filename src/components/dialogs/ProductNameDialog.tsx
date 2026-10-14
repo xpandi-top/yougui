@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
-import { displayProductCode, type ProductCode } from '../../core/index.ts'
+import { displayProductCode, type ProductCode, type ProductDetails } from '../../core/index.ts'
 import { useT } from '../../context/i18n.tsx'
 import { useProductLookup } from '../../hooks/useProductLookup.ts'
 import { LookupHint } from '../ui/LookupHint.tsx'
@@ -8,7 +8,7 @@ import { LookupHint } from '../ui/LookupHint.tsx'
 interface Props {
   product: ProductCode | null
   onClose: () => void
-  onSubmit: (name: string) => void
+  onSubmit: (name: string, details: ProductDetails | null) => void
 }
 
 /** 新商品码命名：自动查询商品名作为建议；用户没输入过时才自动填入。 */
@@ -36,7 +36,9 @@ export function ProductNameDialog({ product, onClose, onSubmit }: Props) {
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          if (name.trim()) onSubmit(name)
+          if (!name.trim()) return
+          const info = lookup.status === 'found' ? lookup.info : undefined
+          onSubmit(name, info ? { name: info.name, brand: info.brand, model: info.model, category: info.category, source: info.source, at: Date.now() } : null)
         }}
       >
         <DialogTitle>{t('scan.unknownProductTitle')}</DialogTitle>

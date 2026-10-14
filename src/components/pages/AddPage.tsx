@@ -15,14 +15,31 @@ import {
 } from '@mui/material'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_ITEM_ICON, iconById, iconLabel } from '../../catalog.ts'
-import { createEntity, createWithBarcode, parseProductCode, productCodeSuggestions, pathNames, PATH_SEP, similarNames, type CreateInput, type Entity } from '../../core/index.ts'
+import {
+  addAttachment,
+  createEntity,
+  createWithBarcode,
+  parseProductCode,
+  productCodeSuggestions,
+  pathNames,
+  PATH_SEP,
+  setCover,
+  similarNames,
+  type AttachmentInput,
+  type CreateInput,
+  type Entity,
+  type ProductDetails,
+} from '../../core/index.ts'
 import { useI18n, useT } from '../../context/i18n.tsx'
 import { useFeedback } from '../../context/feedback.tsx'
 import { useSnap, useStore } from '../../context/store.tsx'
 import { useCommit } from '../../hooks/useCommit.ts'
 import { useProductLookup } from '../../hooks/useProductLookup.ts'
 import { navigate, useRoute } from '../../hooks/useRoute.ts'
+import { checkFile, optimizePhoto, sha256 } from '../../lib/files.ts'
+import { newId } from '../../lib/store.ts'
 import { IconPicker } from '../dialogs/Basic.tsx'
+import { CategoryField, ExpiryField } from '../ui/Fields.tsx'
 import { PlacePicker } from '../dialogs/PlacePicker.tsx'
 import { Icon } from '../ui/Icon.tsx'
 import { LookupHint } from '../ui/LookupHint.tsx'
@@ -55,6 +72,10 @@ export function AddPage() {
   const [unit, setUnit] = useState('')
   const [container, setContainer] = useState(false)
   const [category, setCategory] = useState('')
+  const [expiresAt, setExpiresAt] = useState('')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const photoInput = useRef<HTMLInputElement>(null)
   const [note, setNote] = useState('')
   const [barcode, setBarcode] = useState(query.get('barcode') ?? '')
   const [picking, setPicking] = useState(false)
@@ -85,6 +106,26 @@ export function AddPage() {
     if (info.category) setCategory((c) => c || info.category!)
   }, [lookup]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!photo) {
+      setPhotoUrl(null)
+      return
+    }
+    const u = URL.createObjectURL(photo)
+    setPhotoUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [photo])
+
+  function onPhoto(f: File | undefined) {
+    if (!f) return
+    const c = checkFile(f)
+    if (!c.ok || !c.mime.startsWith('image/')) {
+      toast(c.ok ? t('att.err.type') : c.reason === 'tooLarge' ? t('att.err.tooLarge') : t('att.err.type'), { severity: 'error' })
+      return
+    }
+    setPhoto(f)
+  }
+
   async function save() {
     if (!name.trim() || qtyErr || barcodeErr || busy) return
     setBusy(true)
@@ -98,19 +139,53 @@ export function AddPage() {
       canContain: container,
       category,
       note,
+      expiresAt: expiresAt || null,
     }
+    // 照片先优化并存入本机，再在同一次提交里建物品、附件并设为封面；提交失败则删掉文件
+    let att: { id: string; meta: AttachmentInput } | null = null
+    if (photo) {
+      try {
+        const o = await optimizePhoto(photo)
+        const id = newId()
+        await store.saveFile(id, o.blob)
+        att = {
+          id,
+          meta: { name: name.trim(), typeKey: 'photo', provider: 'local', mime: 'image/jpeg', size: o.blob.size, originalName: photo.name, checksum: await sha256(o.blob), width: o.width, height: o.height, optimized: true },
+        }
+      } catch {
+        setBusy(false)
+        toast(t('att.err.decode'), { severity: 'error' })
+        return
+      }
+    }
+    const details: ProductDetails | null =
+      lookup.status === 'found' && lookup.info
+        ? { name: lookup.info.name, brand: lookup.info.brand, model: lookup.info.model, category: lookup.info.category, source: lookup.info.source, at: Date.now() }
+        : null
     const r = await commit<Entity>(
       'create',
       (e: Entity) => ({ entityId: e.id, entityName: e.name, toId: parentId, toName: parentId ? snap.entities[parentId]?.name : null, qty: e.quantity }),
-      (tx) => (product ? createWithBarcode(tx, input, product) : createEntity(tx, input)),
+      (tx) => {
+        const e = product ? createWithBarcode(tx, input, product, details) : createEntity(tx, input)
+        if (att) {
+          addAttachment(tx, att.meta, att.id)
+          setCover(tx, e.id, att.id)
+        }
+        return e
+      },
       { success: continuous ? '' : (e) => t('toast.created', { name: e.name }) },
     )
     setBusy(false)
-    if (!r.ok) return
+    if (!r.ok) {
+      if (att) await store.deleteFile(att.id)
+      return
+    }
     if (continuous) {
       setAdded((a) => [{ id: r.out.id, name: r.out.name, opId: r.opId }, ...a])
       setName('')
       setBarcode('')
+      setPhoto(null)
+      setExpiresAt('')
       autoName.current = ''
       setAutoApplied(false)
       nameRef.current?.focus()
@@ -192,25 +267,45 @@ export function AddPage() {
             </Button>
           </Box>
 
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              {t('add.appearance')}
+            </Typography>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mt: 0.5 }}>
+              <Box sx={{ width: 56, height: 56, border: 1, borderColor: 'divider', borderRadius: 1, display: 'grid', placeItems: 'center', color: 'primary.main', overflow: 'hidden', flexShrink: 0 }}>
+                {photoUrl ? <Box component="img" src={photoUrl} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Icon name={icon.id} size={30} />}
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="body2">{photo ? t('add.photoChosen') : iconKey ? iconLabel(icon, lang) : t('add.iconDefault')}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {photo ? t('add.photoNote') : t('add.appearanceHelp')}
+                </Typography>
+              </Box>
+            </Stack>
+            <Stack direction="row" sx={{ gap: 1, mt: 1, flexWrap: 'wrap' }}>
+              <input ref={photoInput} type="file" hidden accept="image/*" onChange={(e) => {
+                onPhoto(e.target.files?.[0])
+                e.target.value = ''
+              }} />
+              <Button size="small" variant="outlined" startIcon={<Icon name="camera" size={16} />} onClick={() => photoInput.current?.click()}>
+                {photo ? t('cover.change') : t('add.takePhoto')}
+              </Button>
+              {photo && (
+                <Button size="small" onClick={() => setPhoto(null)}>
+                  {t('add.removePhoto')}
+                </Button>
+              )}
+              <Button size="small" startIcon={<Icon name="items" size={16} />} onClick={() => setIconOpen(true)}>
+                {t('icon.change')}
+              </Button>
+            </Stack>
+          </Box>
+
           <Button size="small" onClick={() => setMore((m) => !m)} sx={{ alignSelf: 'flex-start' }} endIcon={<Icon name="next" size={14} sx={{ transform: more ? 'rotate(90deg)' : 'none' }} />}>
             {t('add.more')}
           </Button>
           <Collapse in={more}>
             <Stack spacing={2}>
-              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                <Box sx={{ width: 48, height: 48, border: 1, borderColor: 'divider', borderRadius: 1, display: 'grid', placeItems: 'center', color: 'primary.main' }}>
-                  <Icon name={icon.id} size={28} />
-                </Box>
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="body2">{t('add.icon')}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {iconKey ? iconLabel(icon, lang) : t('add.iconDefault')}
-                  </Typography>
-                </Box>
-                <Button size="small" onClick={() => setIconOpen(true)}>
-                  {t('icon.change')}
-                </Button>
-              </Stack>
               <FormControlLabel control={<Switch checked={tracking} onChange={(e) => setTracking(e.target.checked)} />} label={t('qty.tracking')} />
               {tracking && (
                 <Stack direction="row" spacing={1}>
@@ -226,7 +321,8 @@ export function AddPage() {
                 </Stack>
               )}
               <FormControlLabel control={<Switch checked={container} onChange={(e) => setContainer(e.target.checked)} />} label={t('entity.containerSwitch')} />
-              <TextField label={t('field.category')} value={category} onChange={(e) => setCategory(e.target.value)} />
+              <CategoryField value={category} onChange={setCategory} />
+              <ExpiryField value={expiresAt} onChange={setExpiresAt} />
               <TextField
                 label={t('barcode.label')}
                 value={barcode}
@@ -292,6 +388,10 @@ export function AddPage() {
       <IconPicker
         open={iconOpen}
         value={iconKey}
+        onPhoto={() => {
+          setIconOpen(false)
+          photoInput.current?.click()
+        }}
         onClose={() => setIconOpen(false)}
         onPick={(k) => {
           setIconKey(k)

@@ -49,6 +49,7 @@ import {
   removeBarcode,
   setContainer,
   setCover,
+  setProductDetails,
   setQuantity,
   stocksOfType,
   TOKEN_ALPHABET,
@@ -60,6 +61,10 @@ import {
 } from '../../core/index.ts'
 import { iconById, iconLabel } from '../../catalog.ts'
 import { hasKey, useI18n, useT, type UiKey } from '../../context/i18n.tsx'
+import { formatDateTime } from '../../lib/dates.ts'
+import { lookupProduct } from '../../lib/lookup.ts'
+import { useSettings } from '../../lib/settings.ts'
+import { CategoryField, ExpiryChip, ExpiryField } from '../ui/Fields.tsx'
 import { useFeedback } from '../../context/feedback.tsx'
 import { useAppState, useSnap } from '../../context/store.tsx'
 import { useCommit } from '../../hooks/useCommit.ts'
@@ -236,14 +241,15 @@ export function ItemQuickActions({ entity }: { entity: Entity }) {
 function EditDialog({ entity, open, onClose }: { entity: Entity; open: boolean; onClose: () => void }) {
   const t = useT()
   const { commit } = useCommit()
-  const [f, setF] = useState({ name: entity.name, category: entity.category ?? '', unit: entity.unit ?? '', note: entity.note ?? '' })
-  const reset = () => setF({ name: entity.name, category: entity.category ?? '', unit: entity.unit ?? '', note: entity.note ?? '' })
+  const init = () => ({ name: entity.name, category: entity.category ?? '', unit: entity.unit ?? '', note: entity.note ?? '', expiresAt: entity.expiresAt ?? '' })
+  const [f, setF] = useState(init)
+  const reset = () => setF(init())
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" slotProps={{ transition: { onEnter: reset } }}>
       <form
         onSubmit={async (e) => {
           e.preventDefault()
-          const r = await commit('update', { entityId: entity.id, entityName: f.name }, (tx) => updateEntity(tx, entity.id, f), { success: t('toast.saved') })
+          const r = await commit('update', { entityId: entity.id, entityName: f.name }, (tx) => updateEntity(tx, entity.id, entity.kind === 'item' ? { ...f, expiresAt: f.expiresAt || null } : { name: f.name, note: f.note }), { success: t('toast.saved') })
           if (r.ok) onClose()
         }}
       >
@@ -252,10 +258,15 @@ function EditDialog({ entity, open, onClose }: { entity: Entity; open: boolean; 
           <Stack spacing={2} sx={{ pt: 1 }}>
             <TextField label={t('field.name')} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required autoFocus />
             {entity.kind === 'item' && (
-              <Stack direction="row" spacing={1}>
-                <TextField label={t('field.category')} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
-                <TextField label={t('field.unit')} value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} sx={{ maxWidth: 120 }} />
-              </Stack>
+              <>
+                <Stack direction="row" spacing={1}>
+                  <Box sx={{ flex: 1 }}>
+                    <CategoryField value={f.category} onChange={(category) => setF({ ...f, category })} />
+                  </Box>
+                  <TextField label={t('field.unit')} value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} sx={{ maxWidth: 120 }} />
+                </Stack>
+                <ExpiryField value={f.expiresAt} onChange={(expiresAt) => setF({ ...f, expiresAt })} />
+              </>
             )}
             <TextField label={t('field.note')} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} multiline minRows={3} />
           </Stack>
@@ -313,6 +324,131 @@ function CoverActions({ entity }: { entity: Entity }) {
   )
 }
 
+function DetailRow({ label, children }: { label: ReactNode; children: ReactNode }) {
+  return (
+    <Stack direction="row" spacing={2} sx={{ py: 0.75, alignItems: 'baseline' }}>
+      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 72, flexShrink: 0 }}>
+        {label}
+      </Typography>
+      <Box sx={{ minWidth: 0, flex: 1, wordBreak: 'break-word' }}>{children}</Box>
+    </Stack>
+  )
+}
+
+/** 详细信息：录入时间、有效期、分类、备注。 */
+function Details({ entity, onEdit }: { entity: Entity; onEdit: () => void }) {
+  const t = useT()
+  const { lang } = useI18n()
+  return (
+    <Card sx={{ px: 2, py: 1 }}>
+      <DetailRow label={t('detail.createdAt')}>
+        <Typography variant="body2">{formatDateTime(entity.createdAt, lang)}</Typography>
+      </DetailRow>
+      {entity.updatedAt - entity.createdAt > 60_000 && (
+        <DetailRow label={t('detail.updatedAt')}>
+          <Typography variant="body2">{formatDateTime(entity.updatedAt, lang)}</Typography>
+        </DetailRow>
+      )}
+      {entity.kind === 'item' && (
+        <DetailRow label={t('expiry.label')}>
+          {entity.expiresAt ? (
+            <Stack direction="row" sx={{ gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Typography variant="body2">{entity.expiresAt}</Typography>
+              <ExpiryChip entity={entity} always />
+            </Stack>
+          ) : (
+            <Link component="button" variant="body2" onClick={onEdit}>
+              {t('expiry.set')}
+            </Link>
+          )}
+        </DetailRow>
+      )}
+      {entity.category && (
+        <DetailRow label={t('field.category')}>
+          <Typography variant="body2">{entity.category}</Typography>
+        </DetailRow>
+      )}
+      {entity.note && (
+        <DetailRow label={t('field.note')}>
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+            {entity.note}
+          </Typography>
+        </DetailRow>
+      )}
+    </Card>
+  )
+}
+
+/** 产品信息：联网查到并保存在型号上的品牌、型号等；可重新查询，并可用作名称/分类。 */
+function ProductInfoBlock({ entity }: { entity: Entity }) {
+  const t = useT()
+  const { lang } = useI18n()
+  const snap = useSnap()
+  const { commit } = useCommit()
+  const { toast } = useFeedback()
+  const { productLookup } = useSettings()
+  const [busy, setBusy] = useState(false)
+  const type = entity.typeId ? snap.types[entity.typeId] : undefined
+  const p = type?.product
+  const code = type?.barcodes[0]
+  if (!type || (!p && !code)) return null
+
+  async function refresh() {
+    if (!code || !type) return
+    setBusy(true)
+    const r = await lookupProduct(parseProductCode(code)!, lang, { force: true })
+    setBusy(false)
+    if (r.status !== 'found' || !r.info) {
+      toast(t(`lookup.${r.status}` as UiKey), { severity: r.status === 'rateLimited' ? 'warning' : 'info' })
+      return
+    }
+    const info = r.info
+    await commit('update', { entityId: entity.id, entityName: entity.name }, (tx) =>
+      setProductDetails(tx, type.id, { name: info.name, brand: info.brand, model: info.model, category: info.category, source: info.source, at: Date.now() }),
+    { success: t('product.saved') })
+  }
+
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+        {t('product.title')}
+      </Typography>
+      {p ? (
+        <>
+          {p.name && <DetailRow label={t('product.name')}><Typography variant="body2">{p.name}</Typography></DetailRow>}
+          {p.brand && <DetailRow label={t('product.brand')}><Typography variant="body2">{p.brand}</Typography></DetailRow>}
+          {p.model && <DetailRow label={t('product.model')}><Typography variant="body2">{p.model}</Typography></DetailRow>}
+          {p.category && <DetailRow label={t('field.category')}><Typography variant="body2">{p.category}</Typography></DetailRow>}
+          <Typography variant="caption" color="text.secondary">
+            {t('product.sourceAt', { source: p.source && hasKey(`lookup.src.${p.source}`) ? t(`lookup.src.${p.source}` as UiKey) : (p.source ?? '—'), at: formatDateTime(p.at, lang) })}
+          </Typography>
+          <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', mt: 1 }}>
+            {p.name && p.name !== entity.name && (
+              <Button size="small" variant="outlined" onClick={() => void commit('update', { entityId: entity.id, entityName: p.name }, (tx) => updateEntity(tx, entity.id, { name: p.name! }), { success: t('toast.saved') })}>
+                {t('product.useName')}
+              </Button>
+            )}
+            {p.category && p.category !== entity.category && (
+              <Button size="small" variant="outlined" onClick={() => void commit('update', { entityId: entity.id, entityName: entity.name }, (tx) => updateEntity(tx, entity.id, { category: p.category! }), { success: t('toast.saved') })}>
+                {t('product.useCategory', { category: p.category })}
+              </Button>
+            )}
+          </Stack>
+        </>
+      ) : (
+        <Typography variant="body2" color="text.secondary">
+          {t('product.none')}
+        </Typography>
+      )}
+      {code && productLookup && (
+        <Button size="small" startIcon={<Icon name="search" size={16} />} onClick={() => void refresh()} disabled={busy} sx={{ mt: 1 }}>
+          {busy ? t('lookup.loading') : p ? t('product.refresh') : t('product.lookup')}
+        </Button>
+      )}
+    </Box>
+  )
+}
+
 function BarcodeSection({ entity }: { entity: Entity }) {
   const t = useT()
   const snap = useSnap()
@@ -322,7 +458,7 @@ function BarcodeSection({ entity }: { entity: Entity }) {
   const type = entity.typeId ? snap.types[entity.typeId] : undefined
   const others = type ? stocksOfType(snap, type.id).filter((s) => s.id !== entity.id) : []
   return (
-    <Section title={t('barcode.title')}>
+    <Section title={t('product.sectionTitle')}>
       <Card sx={{ p: 2 }}>
         <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           {type?.barcodes.map((c) => (
@@ -342,6 +478,7 @@ function BarcodeSection({ entity }: { entity: Entity }) {
             {t('barcode.add')}
           </Button>
         </Stack>
+        <ProductInfoBlock entity={entity} />
         {others.length > 0 && (
           <Box sx={{ mt: 2 }}>
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
@@ -600,6 +737,7 @@ export function EntityPage({ id }: { id: string }) {
   const [editing, setEditing] = useState(false)
   const [iconOpen, setIconOpen] = useState(false)
   const [subOpen, setSubOpen] = useState(false)
+  const [coverOpen, setCoverOpen] = useState(false)
   const fallbackBack = e?.parentId ? `/e/${e.parentId}` : e?.kind === 'location' ? '/places' : '/items'
   const actions = useEntityActions(e ?? ({ id, kind: 'item', quantity: null } as Entity))
 
@@ -759,14 +897,7 @@ export function EntityPage({ id }: { id: string }) {
           </Box>
         )}
 
-        {e.note && (
-          <Card sx={{ p: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              {t('field.note')}
-            </Typography>
-            <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{e.note}</Typography>
-          </Card>
-        )}
+        <Details entity={e} onEdit={() => setEditing(true)} />
 
         {isHolder && <Contents entity={e} />}
         {e.kind === 'location' && <Appearance entity={e} onChangeIcon={() => setIconOpen(true)} />}
@@ -821,12 +952,17 @@ export function EntityPage({ id }: { id: string }) {
         value={e.iconKey}
         sets={e.kind === 'location' ? ['rooms', 'items'] : ['items']}
         title={e.kind === 'location' ? t('icon.pickPlace') : undefined}
+        onPhoto={() => {
+          setIconOpen(false)
+          setCoverOpen(true)
+        }}
         onClose={() => setIconOpen(false)}
         onPick={async (key) => {
           const r = await commit('update', { entityId: e.id, entityName: e.name }, (tx) => updateEntity(tx, e.id, { iconKey: key }), { success: t('toast.saved') })
           if (r.ok) setIconOpen(false)
         }}
       />
+      <AttachmentAddDialog open={coverOpen} entityId={e.id} asCover onClose={() => setCoverOpen(false)} />
       <NewPlaceDialog
         open={subOpen}
         title={t('entity.addSub')}
